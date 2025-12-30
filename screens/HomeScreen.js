@@ -1,6 +1,7 @@
 // screens/HomeScreen.js
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
@@ -11,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Colors from '../constants/Colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -80,7 +82,13 @@ const DUMMY_CONTENT = [
 
 export default function HomeScreen() {
   const [showTags, setShowTags] = useState({});
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [checkedProducts, setCheckedProducts] = useState(new Set());
   const flatListRef = useRef(null);
+  const bottomSheetRef = useRef(null);
+  
+  // 바텀시트 스냅 포인트 (더 낮게 설정)
+  const snapPoints = useMemo(() => ['20%', '45%'], []);
 
   const toggleTags = (contentId) => {
     setShowTags(prev => ({
@@ -88,6 +96,32 @@ export default function HomeScreen() {
       [contentId]: !prev[contentId],
     }));
   };
+
+  // 상품 클릭 시 바텀시트 열기
+  const handleProductPress = useCallback((products) => {
+    console.log('Products to show:', products);
+    setSelectedProducts(products);
+    setCheckedProducts(new Set()); // 초기화
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  // 체크박스 토글
+  const toggleProductCheck = useCallback((productId) => {
+    setCheckedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 바텀시트 닫기
+  const handleCloseBottomSheet = useCallback(() => {
+    bottomSheetRef.current?.close();
+  }, []);
 
   const renderItem = ({ item }) => {
     const tagsVisible = showTags[item.id];
@@ -115,7 +149,7 @@ export default function HomeScreen() {
                   left: product.position.left,
                 }
               ]}
-              onPress={() => console.log('Product clicked:', product.name)}
+              onPress={() => handleProductPress(item.products)}
             >
               <View style={styles.pinDot} />
               <View style={styles.pinPulse} />
@@ -157,7 +191,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <FlatList
         ref={flatListRef}
         data={DUMMY_CONTENT}
@@ -172,12 +206,105 @@ export default function HomeScreen() {
 
       {/* 상단 헤더 */}
       <View style={styles.topHeader}>
-        <Text style={styles.logo}>Fashion Fit</Text>
+        <Text style={styles.logo}>IPDA</Text>
         <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
-    </View>
+
+      {/* 바텀시트 */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose
+      >
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.sheetTitle}>
+            상품 {selectedProducts.length}개
+          </Text>
+          
+          {/* 가로 스크롤 상품 카드 */}
+          <BottomSheetFlatList
+            horizontal
+            data={selectedProducts}
+            keyExtractor={(item) => item.id}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.productsScroll}
+            renderItem={({ item: product }) => (
+              <TouchableOpacity 
+                style={styles.productCard}
+                onPress={() => toggleProductCheck(product.id)}
+                activeOpacity={0.7}
+              >
+                {/* 상품 이미지 */}
+                <View style={styles.imageWrapper}>
+                  <Image 
+                    source={{ uri: `https://source.unsplash.com/random/200x200?${product.name}` }}
+                    style={styles.productImage}
+                  />
+                  
+                  {/* 체크박스 */}
+                  <TouchableOpacity 
+                    style={styles.checkbox}
+                    onPress={() => toggleProductCheck(product.id)}
+                  >
+                    {checkedProducts.has(product.id) ? (
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.accent} />
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={20} color={Colors.textSecondary} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* 상품 정보 */}
+                <View style={styles.productInfo}>
+                  <Text style={styles.productBrand} numberOfLines={1}>
+                    {product.brand}
+                  </Text>
+                  <Text style={styles.productName} numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  
+                  <View style={styles.priceRow}>
+                    {product.discountPrice ? (
+                      <>
+                        <Text style={styles.discountPrice}>
+                          {product.discountPrice.toLocaleString()}원
+                        </Text>
+                        <View style={styles.discountBadge}>
+                          <Text style={styles.discountRate}>
+                            {Math.round((1 - product.discountPrice / product.price) * 100)}%
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.normalPrice}>
+                        {product.price.toLocaleString()}원
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+
+          {/* AI 피팅룸 버튼 */}
+          <TouchableOpacity 
+            style={styles.fittingButton}
+            disabled={checkedProducts.size === 0}
+          >
+            <Ionicons name="sparkles" size={20} color={Colors.textPrimary} />
+            <Text style={styles.fittingButtonText}>
+              {checkedProducts.size > 0 
+                ? `선택한 ${checkedProducts.size}개 입어보기` 
+                : 'AI 피팅룸에서 입어보기'}
+            </Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+    </GestureHandlerRootView>
   );
 }
 
@@ -229,7 +356,7 @@ const styles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 12,
-    bottom: 100,
+    bottom: 130,
     alignItems: 'center',
     gap: 24,
   },
@@ -246,9 +373,10 @@ const styles = StyleSheet.create({
   // 하단 정보
   bottomInfo: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 120,
     left: 16,
     right: 80,
+    marginBottom: 10,
   },
   username: {
     color: Colors.textPrimary,
@@ -276,5 +404,121 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 20,
     fontWeight: 'bold',
+  },
+
+  // 바텀시트
+  bottomSheetBackground: {
+    backgroundColor: Colors.backgroundLight,
+  },
+  bottomSheetIndicator: {
+    backgroundColor: Colors.border,
+    width: 40,
+  },
+  bottomSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 16,
+  },
+
+  // 가로 스크롤
+  productsScroll: {
+    paddingBottom: 12,
+    gap: 10,
+  },
+
+  // 상품 카드 (가로 슬라이딩)
+  productCard: {
+    width: 120,
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 10,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  productImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: Colors.background,
+  },
+  
+  // 체크박스
+  checkbox: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    padding: 2,
+  },
+
+  productInfo: {
+    padding: 8,
+  },
+  productBrand: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  productName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+    lineHeight: 14,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  discountPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.accent,
+  },
+  normalPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+  discountBadge: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  discountRate: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+
+  // AI 피팅룸 버튼
+  fittingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 16,
+    marginBottom: 20,
+    gap: 8,
+  },
+  fittingButtonText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  bottomPadding: {
+    height: 40,
   },
 });
