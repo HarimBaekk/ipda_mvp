@@ -206,7 +206,7 @@ export default function HomeScreen() {
 
       {/* 상단 헤더 */}
       <View style={styles.topHeader}>
-        <Text style={styles.logo}>IPDA</Text>
+        <Text style={styles.logo}>콘텐츠를 입다(IPDA)</Text>
         <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundCard,
     borderRadius: 10,
     overflow: 'hidden',
-    marginRight: 10,
+    marginRight: 3,
   },
   imageWrapper: {
     position: 'relative',
