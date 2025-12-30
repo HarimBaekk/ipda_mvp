@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "AI 피팅을 위해 카메라 권한이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "사진을 저장하기 위해 갤러리 접근이 필요합니다."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +23,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "output": "static",
@@ -37,6 +46,12 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AI 피팅을 위해 카메라 권한이 필요합니다."
         }
       ]
     ],
